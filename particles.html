@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dパーティクルアニメーション</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<!--
+プロンプト：Claude 3.5
+p5.js を使ったジェネラティブアートを作りたいのです。
+キャンバスのサイズはブラウザサイズですが、最大サイズは1000x1000pxとします。
+黒い背景に3d空間で、ランダムカラーのパーティクルが舞います。パーティクルは画面内の原点から生成されます。
+これを原点に向きながらオービタルに移動するカメラで撮影しているような状況を再現してください。カメラの軌跡は単純なオービットではなく、上下方向にもある程度の揺らぎが必要です。
+マウスホイールによる拡大縮小や、ドラッグによる視点移動を実装してください。
+-->
+<script>
+    let particles = [];
+    const particleCount = 1500;
+    let time = 0;
+    let cameraRotationX = 0;
+    let cameraRotationY = 0;
+    let zoom = 1;
+
+    function setup() {
+        createCanvas(
+            min(windowWidth, 1000),
+            min(windowHeight, 1000),
+            WEBGL
+        );
+        colorMode(HSB);
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+    }
+
+    function draw() {
+        background(0);
+
+        // カメラの制御
+        let camX = sin(time * 0.5 + cameraRotationY) * 200 * zoom;
+        let camY = (cos(time * 0.3) * 100 + sin(time * 0.2) * 50 + cameraRotationX * 100) * zoom;
+        let camZ = cos(time * 0.5 + cameraRotationY) * 200 * zoom;
+        camera(camX, camY, camZ, 0, 0, 0, 0, 1, 0);
+
+        // パーティクルの描画
+        for (let particle of particles) {
+            particle.update();
+            particle.display();
+        }
+
+        time += 0.01;
+    }
+
+    class Particle {
+        constructor() {
+            this.pos = p5.Vector.random3D().mult(random(100, 200));
+            this.vel = p5.Vector.random3D().mult(0.5);
+            this.color = color(random(360), 80, 100);
+        }
+
+        update() {
+            this.pos.add(this.vel);
+
+            // 画面外に出たら反対側から再登場
+            if (this.pos.mag() > 300) {
+                this.pos.setMag(random(100, 200));
+            }
+        }
+
+        display() {
+            push();
+            translate(this.pos.x, this.pos.y, this.pos.z);
+            noStroke();
+            fill(this.color);
+            sphere(2);
+            pop();
+        }
+    }
+
+    function windowResized() {
+        resizeCanvas(
+            min(windowWidth, 1000),
+            min(windowHeight, 1000)
+        );
+    }
+
+    function mouseDragged() {
+        cameraRotationY += (mouseX - pmouseX) * 0.01;
+        cameraRotationX -= (mouseY - pmouseY) * 0.01;
+        // 垂直回転の制限
+        cameraRotationX = constrain(cameraRotationX, -PI/2, PI/2);
+    }
+
+    function mouseWheel(event) {
+        zoom += event.delta * 0.0005;
+        // ズームの制限
+        zoom = constrain(zoom, 0.1, 5);
+        return false; // スクロールイベントの伝播を防ぐ
+    }
+</script>
+</body>
+</html>
