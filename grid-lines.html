@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Line Art Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #canvas-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #sketch-holder {
+            margin-bottom: 30px;
+        }
+        #download-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #download-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<!--
+プロンプト：Claude 3.5
+キャンバスサイズは500px x 500px で、キャンバス内にx10px,y10px間隔の仮想的なグリッドを作成します。このグリッドの点をポイントと呼びます。
+キャンバスには周囲2pxの余白を設けてください。
+このグリッドをランダムな直線で結びます。直線は黒で2pxです。
+直線は長さは最大で5ポイント分。縦横斜めに伸ばせますが、斜めは45°単位です。できる限りぎっしり詰め込めるようにしてください。
+キャンバスをクリックすると新しい描画が得られるようにしてください。
+描画をSVGで出力できるようにしてください。ダウンロードボタンはキャンバスの下に30pxのマージンを設けて配置してください。
+-->
+<div id="canvas-container">
+    <div id="sketch-holder"></div>
+    <button id="download-button">Download SVG</button>
+</div>
+<script>
+    let gridPoints = [];
+    let lines = [];
+    const gridSpacing = 10;
+    const maxLineLength = 5;
+    const maxAttempts = 1000;
+    const canvasSize = 502;
+
+    function setup() {
+        let canvas = createCanvas(canvasSize, canvasSize);
+        canvas.parent('sketch-holder');
+        initializeGrid();
+        generateLines();
+
+        let downloadButton = select('#download-button');
+        downloadButton.mousePressed(downloadSVG);
+    }
+
+    function draw() {
+        background(240);
+        translate(1, 1); // 2pxの余白を作成
+        drawGrid();
+        drawLines();
+    }
+
+    function mousePressed() {
+        // キャンバス内のクリックのみに反応（余白を考慮）
+        if (mouseX > 1 && mouseX < width - 1 && mouseY > 1 && mouseY < height - 1) {
+            lines = [];
+            generateLines();
+        }
+    }
+
+    function initializeGrid() {
+        for (let x = 0; x < width - 2; x += gridSpacing) {
+            for (let y = 0; y < height - 2; y += gridSpacing) {
+                gridPoints.push(createVector(x, y));
+            }
+        }
+    }
+
+    function generateLines() {
+        let attempts = 0;
+        while (attempts < maxAttempts) {
+            let start = random(gridPoints);
+            let direction = p5.Vector.random2D().mult(gridSpacing);
+            direction.x = round(direction.x / gridSpacing) * gridSpacing;
+            direction.y = round(direction.y / gridSpacing) * gridSpacing;
+            let length = floor(random(1, maxLineLength + 1));
+            let end = p5.Vector.add(start, p5.Vector.mult(direction, length));
+
+            if (end.x >= 0 && end.x <= width - 2 && end.y >= 0 && end.y <= height - 2) {
+                if (!intersectsExistingLines(start, end)) {
+                    lines.push({start: start, end: end});
+                }
+            }
+            attempts++;
+        }
+    }
+
+    function intersectsExistingLines(start, end) {
+        for (let lineObj of lines) {
+            if (lineIntersection(start, end, lineObj.start, lineObj.end)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function lineIntersection(p1, p2, p3, p4) {
+        let x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+        let x3 = p3.x, y3 = p3.y, x4 = p4.x, y4 = p4.y;
+
+        let den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (den == 0) return false;
+
+        let t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+        let u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+
+        return (t > 0 && t < 1 && u > 0 && u < 1);
+    }
+
+    function drawGrid() {
+        stroke(200);
+        strokeWeight(1);
+        for (let point of gridPoints) {
+            ellipse(point.x, point.y, 1, 1);
+        }
+    }
+
+    function drawLines() {
+        stroke(0);
+        strokeWeight(2);
+        for (let lineObj of lines) {
+            line(lineObj.start.x, lineObj.start.y, lineObj.end.x, lineObj.end.y);
+        }
+    }
+
+    function downloadSVG() {
+        let svg = createSVG();
+        let blob = new Blob([svg], {type: 'image/svg+xml'});
+        let url = URL.createObjectURL(blob);
+        let link = document.createElement('a');
+        link.download = 'grid_line_art.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function createSVG() {
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${canvasSize}">
+  <rect width="100%" height="100%" fill="#F0F0F0"/>
+  <g transform="translate(1,1)">`;
+
+        for (let point of gridPoints) {
+            svg += `<circle cx="${point.x}" cy="${point.y}" r="0.5" fill="#C8C8C8"/>`;
+        }
+
+        for (let lineObj of lines) {
+            svg += `<line x1="${lineObj.start.x}" y1="${lineObj.start.y}" x2="${lineObj.end.x}" y2="${lineObj.end.y}"
+             stroke="black" stroke-width="2"/>`;
+        }
+
+        svg += '</g></svg>';
+        return svg;
+    }
+</script>
+</body>
+</html>
