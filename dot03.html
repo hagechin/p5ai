@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dパーティクルアニメーション</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<!--
+プロンプト：Claude 3.5
+1000px x 450px のキャンバスの中央にドットで構成された文字を作ります。
+とりあえずHELLOとしましょう。5x7ドットフォントを使ったような形で表現してください。
+このそれぞれのドットは、それぞれ任意の点までの距離を半径とする円の軌道上にあります。そしてこのドットは5秒静止し、8秒かけて軌跡上を1周して元の位置に戻り、これを繰り返します。
+背景は白、円は薄いグレーのライン、ドットを黒として作ってください。
+
+ドットをHELLOの形に並べてください。
+それぞれのドットに対して、任意の位置の原点を決めてください。
+原点からドットまでの半径を持つ、原点を中心とする円を描いてください。
+ドットはその円のまわりを8秒かけてまわるようにしてください。
+ドットは初期位置では4秒静止するようにしてください。
+動き始めと終わりはイージング効果を適用してください。
+-->
+<script>
+    let dots = [];
+    const canvasWidth = 1000;
+    const canvasHeight = 450;
+    const text = "HELLO";
+    const dotSize = 4;
+    const gridSize = 8; // ドット間の距離
+    const letterWidth = 5;
+    const letterHeight = 7;
+    const letterSpacing = 3;
+    const cycleDuration = 12000; // 12秒 (4秒静止 + 8秒移動)
+    const staticDuration = 4000; // 4秒静止
+
+    // 5x7ドットフォントの定義
+    const fontData = {
+        'H': [[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+        'E': [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+        'L': [[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+        'O': [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]]
+    };
+
+    function setup() {
+        createCanvas(canvasWidth, canvasHeight);
+
+        let startX = (width - (text.length * (letterWidth * gridSize + letterSpacing * gridSize) - letterSpacing * gridSize)) / 2;
+        let startY = (height - letterHeight * gridSize) / 2;
+
+        for (let i = 0; i < text.length; i++) {
+            let letter = text[i];
+            let letterData = fontData[letter];
+
+            for (let y = 0; y < letterHeight; y++) {
+                for (let x = 0; x < letterWidth; x++) {
+                    if (letterData[y][x] === 1) {
+                        let dotX = startX + i * (letterWidth * gridSize + letterSpacing * gridSize) + x * gridSize + gridSize / 2;
+                        let dotY = startY + y * gridSize + gridSize / 2;
+
+                        // 任意の位置に原点を設定
+                        let centerX = dotX + random(-50, 50);
+                        let centerY = dotY + random(-50, 50);
+
+                        // 原点からドットまでの距離を半径として設定
+                        let radius = dist(centerX, centerY, dotX, dotY);
+
+                        // ドットの初期角度を計算
+                        let angle = atan2(dotY - centerY, dotX - centerX);
+
+                        // 回転方向をランダムに決定 (1: 時計回り, -1: 反時計回り)
+                        let direction = random() < 0.5 ? 1 : -1;
+
+                        dots.push({
+                            x: dotX,
+                            y: dotY,
+                            centerX: centerX,
+                            centerY: centerY,
+                            radius: radius,
+                            angle: angle,
+                            direction: direction
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    function draw() {
+        background(255);
+
+        // 円の軌道を描画
+        stroke(200);
+        noFill();
+        for (let dot of dots) {
+            ellipse(dot.centerX, dot.centerY, dot.radius * 2);
+        }
+
+        // ドットを描画
+        fill(0);
+        noStroke();
+        for (let dot of dots) {
+            let time = millis() % cycleDuration;
+            if (time < staticDuration) {
+                // 静止期間
+                ellipse(dot.x, dot.y, dotSize);
+            } else {
+                // 移動期間
+                let moveTime = time - staticDuration;
+                let moveProgress = moveTime / (cycleDuration - staticDuration);
+
+                // イージング効果を適用
+                let easedProgress = easeInOutCubic(moveProgress);
+
+                // 方向に応じて角度を計算
+                let newAngle = dot.angle + dot.direction * easedProgress * TWO_PI;
+                let x = dot.centerX + cos(newAngle) * dot.radius;
+                let y = dot.centerY + sin(newAngle) * dot.radius;
+
+                ellipse(x, y, dotSize);
+            }
+        }
+    }
+
+    // イージング関数
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+</script>
+</body>
+</html>
