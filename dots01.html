@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ランダムに浮遊するけど何かの規則性がうっすら見えるドット</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<!--
+プロンプト：Claude 3.5
+512px x 512px のキャンバスを用意します。
+薄いグレーの背景に濃いグレーのドットを縦横8px間隔で並べてください。ドットの半径は最小最大を設定できるようにしてください。
+このドットをそれぞれランダムに任意の向きに3px以上8px未満の距離で移動させます。
+移動前の位置を原点とし、このドットを原点を中心にゆっくり回転させます。回転の速度はゆっくりめで、回転の方向はCCWとします。
+ドットの軌跡は楕円から円形までランダムに
+-->
+<script>
+    let dots = [];
+    const canvasSize = 512;
+    const spacing = 8;
+    const minOffset = 3; // 最小オフセット（回転半径）
+    const maxOffset = 12; // 最大オフセット（回転半径）
+    const minDotSize = 2; // ドットの最小直径
+    const maxDotSize = 6; // ドットの最大直径
+    const rotationSpeed = 0.03; // 回転速度（ラジアン/フレーム）
+
+    function setup() {
+        createCanvas(canvasSize, canvasSize);
+
+        // ドットの生成
+        for (let x = spacing; x < width; x += spacing) {
+            for (let y = spacing; y < height; y += spacing) {
+                let angle = random(TWO_PI);
+                let radiusX = random(minOffset, maxOffset);
+                let radiusY = random(radiusX, maxOffset); // radiusX以上、maxOffset以下
+                let dotSize = random(minDotSize, maxDotSize);
+                dots.push({
+                    originX: x,
+                    originY: y,
+                    radiusX: radiusX,
+                    radiusY: radiusY,
+                    angle: angle,
+                    size: dotSize
+                });
+            }
+        }
+    }
+
+    function draw() {
+        background(220); // 薄いグレーの背景
+
+        // ドットの描画と回転
+        fill(100); // 濃いグレー
+        noStroke();
+
+        for (let dot of dots) {
+            // 回転角度の更新
+            dot.angle += rotationSpeed;
+
+            // 新しい位置の計算（楕円軌道）
+            let x = dot.originX + dot.radiusX * cos(dot.angle);
+            let y = dot.originY + dot.radiusY * sin(dot.angle);
+
+            // ドットの描画
+            circle(x, y, dot.size);
+        }
+    }
+</script>
+</body>
+</html>
