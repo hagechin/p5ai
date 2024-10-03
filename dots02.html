@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Star Field</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #000; }
+    </style>
+</head>
+<body>
+<script>
+    let dots = [];
+    const canvasSize = 512;
+    const spacing = 10;
+    const minOffset = 3;
+    const maxOffset = 8;
+    const minDotSize = 2;
+    const maxDotSize = 6;
+    const rotationSpeed = 0.02;
+    const mouseInfluenceRadius = 200;
+    const mouseRepelStrength = 70;
+
+    function setup() {
+        createCanvas(canvasSize, canvasSize);
+        pixelDensity(1);
+
+        for (let x = 0; x < width; x += spacing) {
+            for (let y = 0; y < height; y += spacing) {
+                let angle = random(TWO_PI);
+                let radiusX = random(minOffset, maxOffset);
+                let radiusY = random(radiusX, maxOffset);
+                let dotSize = random(minDotSize, maxDotSize);
+                let depth = map(dotSize, minDotSize, maxDotSize, 0.5, 1);
+                let temperature = random(3000, 10000); // K
+                dots.push({
+                    originX: x,
+                    originY: y,
+                    radiusX: radiusX,
+                    radiusY: radiusY,
+                    angle: angle,
+                    size: dotSize,
+                    depth: depth,
+                    temperature: temperature,
+                    color: temperatureToColor(temperature)
+                });
+            }
+        }
+
+        noStroke();
+    }
+
+    function draw() {
+        background(0);
+
+        for (let dot of dots) {
+            dot.angle += rotationSpeed * dot.depth;
+            let x = dot.originX + dot.radiusX * cos(dot.angle);
+            let y = dot.originY + dot.radiusY * sin(dot.angle);
+
+            // マウスからの逃避
+            let d = dist(x, y, mouseX, mouseY);
+            if (d < mouseInfluenceRadius) {
+                let angle = atan2(y - mouseY, x - mouseX);
+                let repelForce = map(d, 0, mouseInfluenceRadius, mouseRepelStrength, 0);
+                x += cos(angle) * repelForce * dot.depth;
+                y += sin(angle) * repelForce * dot.depth;
+            }
+
+            drawGlowingDot(x, y, dot.size * dot.depth, dot.color);
+        }
+    }
+
+    function drawGlowingDot(x, y, size, color) {
+        let glowSize = size * 5;
+        let steps = 3;
+
+        for (let i = steps; i >= 0; i--) {
+            let alpha = map(i, 0, steps, color.levels[3], 0);
+            let currentSize = map(i, 0, steps, size, glowSize);
+            fill(color.levels[0], color.levels[1], color.levels[2], alpha);
+            ellipse(x, y, currentSize, currentSize);
+        }
+
+        fill(color);
+        ellipse(x, y, size, size);
+    }
+
+    function temperatureToColor(temp) {
+        // 簡略化された色温度変換
+        let r, g, b;
+        temp = constrain(temp, 1000, 40000) / 100;
+
+        if (temp <= 66) {
+            r = 255;
+            g = temp;
+            g = 99.4708025861 * log(g) - 161.1195681661;
+        } else {
+            r = temp - 60;
+            r = 329.698727446 * pow(r, -0.1332047592);
+            g = temp - 60;
+            g = 288.1221695283 * pow(g, -0.0755148492);
+        }
+
+        if (temp >= 66) {
+            b = 255;
+        } else if (temp <= 19) {
+            b = 0;
+        } else {
+            b = temp - 10;
+            b = 138.5177312231 * log(b) - 305.0447927307;
+        }
+
+        return color(constrain(r, 0, 255), constrain(g, 0, 255), constrain(b, 0, 255));
+    }
+</script>
+</body>
+</html>
